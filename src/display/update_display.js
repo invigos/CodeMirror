@@ -116,7 +116,8 @@ export function updateDisplayIfNeeded(cm, update) {
   // width and height.
   removeChildren(display.cursorDiv)
   removeChildren(display.selectionDiv)
-  display.gutters.style.height = display.sizer.style.minHeight = 0
+  display.gutters.style.height = 0
+  //display.sizer.style.minHeight = 0
 
   if (different) {
     display.lastWrapHeight = update.wrapperHeight
