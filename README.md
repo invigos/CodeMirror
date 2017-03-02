@@ -32,3 +32,15 @@ conduct.
 To build the project, make sure you have Node.js installed (at least version 6)
 and then `npm install`. To run, just open `index.html` in your
 browser (you don't need to run a webserver). Run the tests with `npm test`.
+
+### Invigos
+
+You need to install rollup globally first `npm i -g rollup`
+
+Then setup other packages `npm i`
+
+Set INVIGOS_PATH var to where you storing project
+e.g. `INVIGOS_PATH='/home/alukin/proj/Invigos/E6Invigos'`
+(on Linux it can be saved inside `~/.profile` so you don't need to re-type it each time)
+
+after that you can use `npm run deploy` to build and deploy resulting codemirror lib into your webapp folder
