@@ -14,6 +14,11 @@ export function maybeScrollWindow(cm, coords) {
   if (signalDOMEvent(cm, "scrollCursorIntoView")) return
 
   let display = cm.display, box = display.sizer.getBoundingClientRect(), doScroll = null
+  //TODO: @Alexey, hack
+  if (typeof Ext != 'undefined' && typeof Invigos != 'undefined' && Ext.feature.has.Touch) {
+    //can be only negative
+    if (box.top > 100) return
+  }
   if (coords.top + box.top < 0) doScroll = true
   else if (coords.bottom + box.top > (window.innerHeight || document.documentElement.clientHeight)) doScroll = false
   if (doScroll != null && !phantom) {

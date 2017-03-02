@@ -61,6 +61,7 @@ function interpretTokenStyle(style, options) {
 // The returned object contains the DOM node, this map, and
 // information about line-wide styles that were set by the mode.
 export function buildLineContent(cm, lineView) {
+  //console.info('buildLineContent', lineView)
   // The padding-right forces the element to have a 'border', which
   // is needed on Webkit to be able to get line-level bounding
   // rectangles for it (in measureChar).
@@ -85,6 +86,7 @@ export function buildLineContent(cm, lineView) {
       builder.addToken = buildTokenBadBidi(builder.addToken, order)
     builder.map = []
     let allowFrontierUpdate = lineView != cm.display.externalMeasured && lineNo(line)
+    //console.log('insertLineContent', line, builder)
     insertLineContent(line, builder, getLineStyles(cm, line, allowFrontierUpdate))
     if (line.styleClasses) {
       if (line.styleClasses.bgClass)
@@ -114,10 +116,48 @@ export function buildLineContent(cm, lineView) {
       builder.content.className = "cm-tab-wrap-hack"
   }
 
+  // TODO: still doesn't look like right place for such change
+  // TODO: not sure this is needed, it can be re-used anywhere theoretically
+  if (window.Invigos && (lineView.line.markedSpans || lineView.line.textClass)) {
+    var markedSpansClasses = lineView.line.markedSpans.reduce(function( acc, makedSpan ) {
+      return acc.concat((
+        //skip empty line class from=null,to=0, that overflowing from prev line
+        makedSpan.to != 0
+        && makedSpan.marker && makedSpan.marker.className || '').split(' '))
+    }, []);
+    // looks like lineView.line.textClass always contains only single class (or null), so it's safe
+    markedSpansClasses.push((lineView.line.textClass || "").trim());
+    let fsClasses = markedSpansClasses.filter(( cls ) => cls.match(/firepad-fs-/));
+    if ( fsClasses.length ) {
+      //if (fsClasses.length > 1) debugger;
+      //attach font-size classes, so outer `responsive` span will have same size as inner span and cursor size will be calculated correctly
+      content.setAttribute("class", fsClasses.join(' '));
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-30px').length ) {
+        builder.pre.className += ' fp-cm-pre-title ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-25px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik1 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-20px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik2 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-16px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik3 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-16-01px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik4 ';
+      }
+    }
+  }
+
   signal(cm, "renderLine", cm, lineView.line, builder.pre)
+  //console.log('%cbuilder pre', 'color: green', builder.pre)
+  //console.log(builder.pre.outerHTML)
   if (builder.pre.className)
     builder.textClass = joinClasses(builder.pre.className, builder.textClass || "")
 
+  //if (builder.pre.classList[1] == "fp-cm-pre-title") debugger;
+  //if (builder.pre.outerHTML.match(/content after title/)) debugger;
   return builder
 }
 

@@ -12,7 +12,8 @@
     "watch": "rollup -w -c",
     "prepublish": "npm run-script build",
     "test": "node ./test/run.js",
-    "lint": "bin/lint"
+    "lint": "bin/lint",
+    "deploy": "npm run build && cp lib/codemirror.js $INVIGOS_PATH/app/lib/codemirror.js"
   },
   "devDependencies": {
     "blint": "^0.5.1",

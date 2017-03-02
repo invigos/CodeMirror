@@ -58,6 +58,7 @@ export function maybeClipScrollbars(cm) {
 // (returning false) when there is nothing to be done and forced is
 // false.
 export function updateDisplayIfNeeded(cm, update) {
+  //console.log('%cupdateDisplayIfNeeded','color: blue')
   let display = cm.display, doc = cm.doc
 
   if (update.editorIsHidden) {
@@ -116,7 +117,8 @@ export function updateDisplayIfNeeded(cm, update) {
   // width and height.
   removeChildren(display.cursorDiv)
   removeChildren(display.selectionDiv)
-  display.gutters.style.height = display.sizer.style.minHeight = 0
+  display.gutters.style.height = 0
+  //display.sizer.style.minHeight = 0
 
   if (different) {
     display.lastWrapHeight = update.wrapperHeight
@@ -176,6 +178,7 @@ export function updateDisplaySimple(cm, viewport) {
 // that are not there yet, and updating the ones that are out of
 // date.
 function patchDisplay(cm, updateNumbersFrom, dims) {
+  //console.log('%cpatchDisplay','color: wheat')
   let display = cm.display, lineNumbers = cm.options.lineNumbers
   let container = display.lineDiv, cur = container.firstChild
 

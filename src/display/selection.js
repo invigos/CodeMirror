@@ -29,12 +29,14 @@ export function prepareSelection(cm, primary) {
 
 // Draws a cursor for the given range
 export function drawSelectionCursor(cm, head, output) {
+  //if (window.debugFour) debugger;
   let pos = cursorCoords(cm, head, "div", null, null, !cm.options.singleCursorHeightPerLine)
 
   let cursor = output.appendChild(elt("div", "\u00a0", "CodeMirror-cursor"))
+  //if (window.debugFour) debugger;
   cursor.style.left = pos.left + "px"
-  cursor.style.top = pos.top + "px"
-  cursor.style.height = Math.max(0, pos.bottom - pos.top) * cm.options.cursorHeight + "px"
+  cursor.style.top = (pos.top + (pos.charTop || 0)) + "px"
+  cursor.style.height = (pos.lineHeight || 0) * cm.options.cursorHeight + "px"
 
   if (pos.other) {
     // Secondary cursor, shown when on a 'jump' in bi-directional text
@@ -48,6 +50,8 @@ export function drawSelectionCursor(cm, head, output) {
 
 // Draws the given range as a highlighted selection
 function drawSelectionRange(cm, range, output) {
+  //console.info('drawSelectionRange', {line: range.head.line, ch: range.head.ch}, {line: range.anchor.line, ch: range.anchor.ch})
+  //if (window.debugEight) debugger;
   let display = cm.display, doc = cm.doc
   let fragment = document.createDocumentFragment()
   let padding = paddingH(cm.display), leftSide = padding.left
@@ -57,12 +61,14 @@ function drawSelectionRange(cm, range, output) {
     if (top < 0) top = 0
     top = Math.round(top)
     bottom = Math.round(bottom)
+    //console.info('add', left, top, width, bottom, ' calcw ', width == null ? rightSide - left : width, ' calch ', bottom - top)
     fragment.appendChild(elt("div", null, "CodeMirror-selected", `position: absolute; left: ${left}px;
                              top: ${top}px; width: ${width == null ? rightSide - left : width}px;
                              height: ${bottom - top}px`))
   }
 
   function drawForLine(line, fromArg, toArg) {
+    //console.info('drawForLine', line, fromArg, toArg)
     let lineObj = getLine(doc, line)
     let lineLen = lineObj.text.length
     let start, end
@@ -82,10 +88,11 @@ function drawSelectionRange(cm, range, output) {
         right = rightPos.right
       }
       if (fromArg == null && from == 0) left = leftSide
+      let charTop = (leftPos.charTop || 0)
       if (rightPos.top - leftPos.top > 3) { // Different lines, draw top part
-        add(left, leftPos.top, null, leftPos.bottom)
+        add(left, leftPos.top + charTop, null, leftPos.bottom + charTop)
         left = leftSide
-        if (leftPos.bottom < rightPos.top) add(left, leftPos.bottom, null, rightPos.top)
+        if (leftPos.bottom < rightPos.top) add(left, leftPos.bottom + charTop, null, rightPos.top + charTop)
       }
       if (toArg == null && to == lineLen) right = rightSide
       if (!start || leftPos.top < start.top || leftPos.top == start.top && leftPos.left < start.left)
@@ -93,7 +100,7 @@ function drawSelectionRange(cm, range, output) {
       if (!end || rightPos.bottom > end.bottom || rightPos.bottom == end.bottom && rightPos.right > end.right)
         end = rightPos
       if (left < leftSide + 1) left = leftSide
-      add(left, rightPos.top, right - left, rightPos.bottom)
+      add(left, rightPos.top + charTop, right - left, rightPos.bottom + charTop)
     })
     return {start: start, end: end}
   }
@@ -114,8 +121,18 @@ function drawSelectionRange(cm, range, output) {
         add(leftEnd.right, leftEnd.top, rightStart.left - leftEnd.right, leftEnd.bottom)
       }
     }
-    if (leftEnd.bottom < rightStart.top)
-      add(leftSide, leftEnd.bottom, null, rightStart.top)
+    if (leftEnd.bottom < rightStart.top) {
+      //if (window.debugNine) debugger;
+      let leftTop = (leftEnd.charTop || 0), rightTop = (rightStart.charTop || 0)
+      let leftPos  = charCoords(cm, Pos(sFrom.line, sFrom.ch), "div", getLine(doc, sFrom.line), "left")
+      //console.info(leftEnd.charTop, rightStart.charTop)
+      // additional line at bottom
+      add(leftSide, leftEnd.bottom + leftTop, null, rightStart.top)
+      // additional line at top for next line
+      if (sTo.ch > 1) add(leftSide, rightStart.top, null, rightStart.top + rightTop)
+      // additional line at top for this line (when whole line selected)
+      if (sFrom.ch == 1) add(leftSide, leftPos.top, null, leftPos.top + leftTop)
+    }
   }
 
   output.appendChild(fragment)

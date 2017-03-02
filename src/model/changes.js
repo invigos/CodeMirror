@@ -44,6 +44,9 @@ function filterChange(doc, change, update) {
 // Apply a change to a document, and add it to the document's
 // history, and propagating it to all linked documents.
 export function makeChange(doc, change, ignoreReadOnly) {
+  //var rnd = Math.ceil(Math.random()*1000);
+  //console.info('makeChange', arguments); //console.trace();
+  //console.group('makeChange'+rnd)
   if (doc.cm) {
     if (!doc.cm.curOp) return operation(doc.cm, makeChange)(doc, change, ignoreReadOnly)
     if (doc.cm.state.suppressEdits) return
@@ -63,6 +66,7 @@ export function makeChange(doc, change, ignoreReadOnly) {
   } else {
     makeChangeInner(doc, change)
   }
+  //console.groupEnd('makeChange'+rnd);
 }
 
 function makeChangeInner(doc, change) {
@@ -259,10 +263,14 @@ function makeChangeSingleDocInEditor(cm, change, spans) {
 }
 
 export function replaceRange(doc, code, from, to, origin) {
+  //var rnd = Math.ceil(Math.random()*1000);
+  //console.info('replaceRange', arguments); //console.trace();
+  //console.group('replaceRange'+rnd)
   if (!to) to = from
   if (cmp(to, from) < 0) { let tmp = to; to = from; from = tmp }
   if (typeof code == "string") code = doc.splitLines(code)
   makeChange(doc, {from: from, to: to, text: code, origin: origin})
+  //console.groupEnd('replaceRange'+rnd);
 }
 
 // Rebasing/resetting history to deal with externally-sourced changes

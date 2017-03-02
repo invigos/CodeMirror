@@ -3,6 +3,7 @@ import { indexOf, lst } from "../util/misc"
 import { cmp } from "./pos"
 import { sawCollapsedSpans } from "./saw_special_spans"
 import { getLine, isLine, lineNo } from "./utils_line"
+import { signalLater } from "../util/operation_group"
 
 // TEXTMARKER SPANS
 
@@ -74,6 +75,8 @@ export function stretchSpansOverChange(doc, change) {
   let oldLast = isLine(doc, change.to.line) && getLine(doc, change.to.line).markedSpans
   if (!oldFirst && !oldLast) return null
 
+  signalMarkersChanges(doc, change)
+
   let startCh = change.from.ch, endCh = change.to.ch, isInsert = cmp(change.from, change.to) == 0
   // Get the spans that 'stick out' on both sides
   let first = markedSpansBefore(oldFirst, startCh, isInsert)
@@ -126,6 +129,49 @@ export function stretchSpansOverChange(doc, change) {
     newMarkers.push(last)
   }
   return newMarkers
+}
+
+// fire event with list of affected markers
+// markers that are between start and end position of change would all be affected
+// and all markers that contain change inside them are affected too
+function signalMarkersChanges(doc, change) {
+    let allSpans = []
+    // get list of all markers between start and end position of change
+    for (let i = change.from.line; i <= change.to.line; i++) {
+      let spans = getLine(doc, i).markedSpans;
+      // for start or end line of change add every span that has it's start or end inside change
+      if (spans && (i == change.from.line || i == change.to.line)) {
+        for (let j = 0; j < spans.length; ++j) {
+          let span = spans[j];
+          let changeStart = change.from.line == i ? change.from.ch : null;
+          let changeEnd   = change.to.line   == i ? change.to.ch   : null;
+          let markerStartInsideChange =
+              (changeStart == null || changeStart < span.from || changeStart <= span.from && span.marker.inclusiveLeft)
+            && (changeEnd  == null || changeEnd   > span.from || changeEnd   >= span.from && span.marker.inclusiveLeft)
+          let markerEndInsideChange =
+              (changeStart == null || changeStart < span.to || changeStart <= span.to && span.marker.inclusiveRight)
+            && (changeEnd  == null || changeEnd   > span.to || changeEnd   >= span.to && span.marker.inclusiveRight)
+          let changeInsideMarker =
+              (span.from == null || span.from < changeStart)
+            && (changeEnd < span.to || span.to == null)
+          if (markerStartInsideChange || markerEndInsideChange || changeInsideMarker) allSpans.push(span)
+        }
+      }
+      // for multiline change, push all intermediate lines spans as changed
+      if (i != change.from.line && i != change.to.line) {
+        if (spans) allSpans = allSpans.concat(spans);
+      }
+    }
+
+    // find unique markers only
+    let uniqueSpans = []
+    for (let i = 0; i < allSpans.length; ++i) {
+        let span = allSpans[i];
+        let found = getMarkedSpanFor(uniqueSpans, span.marker)
+        if (!found) uniqueSpans.push(span)
+    }
+    // trigger an event for changed markers
+    signalLater(cm, "changeHappenedInMarkers", uniqueSpans)
 }
 
 // Remove spans that are empty and don't have a clearWhenEmpty
@@ -317,6 +363,7 @@ function lineIsHiddenInner(doc, line, span) {
 
 // Find the height above the given line.
 export function heightAtLine(lineObj) {
+  //if (window.debug) debugger;
   lineObj = visualLine(lineObj)
 
   let h = 0, chunk = lineObj.parent

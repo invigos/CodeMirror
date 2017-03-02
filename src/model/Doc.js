@@ -56,6 +56,7 @@ Doc.prototype = createObj(BranchChunk.prototype, {
 
   // Non-public interface for adding and removing lines.
   insert: function(at, lines) {
+    //console.log('%cinsert','color: green')
     let height = 0
     for (let i = 0; i < lines.length; ++i) height += lines[i].height
     this.insertInner(at - this.first, lines, height)

@@ -87,6 +87,7 @@ export default function(CodeMirror) {
     }),
 
     indentLine: methodOp(function(n, dir, aggressive) {
+      //console.log('%cindentLine','color: green')
       if (typeof dir != "string" && typeof dir != "number") {
         if (dir == null) dir = this.options.smartIndent ? "smart" : "prev"
         else dir = dir ? "add" : "subtract"
