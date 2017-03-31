@@ -39,20 +39,31 @@ export function displayHeight(cm) {
 // line. When lineWrapping is on, there might be more than one
 // height.
 function ensureLineHeights(cm, lineView, rect) {
+  //console.info('ensureLineHeights'); console.log(lineView, rect);
   let wrapping = cm.options.lineWrapping
   let curWidth = wrapping && displayWidth(cm)
+  //if (window.debug) debugger;
   if (!lineView.measure.heights || wrapping && lineView.measure.width != curWidth) {
     let heights = lineView.measure.heights = []
+    let top = cm.options.cursorHeightIsLineHeight ? (rect.charTop + rect.top) : rect.top
+    let lastRect
     if (wrapping) {
+      //if (window.debugThree) debugger;
       lineView.measure.width = curWidth
       let rects = lineView.text.firstChild.getClientRects()
-      for (let i = 0; i < rects.length - 1; i++) {
+      for (var i = 0; i < rects.length - 1; i++) {
         let cur = rects[i], next = rects[i + 1]
-        if (Math.abs(cur.bottom - next.bottom) > 2)
-          heights.push((cur.bottom + next.top) / 2 - rect.top)
+        if (Math.abs(cur.bottom - next.bottom) > 2) {
+          heights.push((cur.bottom + next.top) / 2 - top)
+        }
       }
+      if (rects.length) lastRect = rects[i]
     }
-    heights.push(rect.bottom - rect.top)
+    if (cm.options.cursorHeightIsLineHeight && wrapping && lastRect) {
+      heights.push(lastRect.bottom - top)
+    } else {
+      heights.push(rect.bottom - top)
+    }
   }
 }
 
@@ -86,11 +97,13 @@ function updateExternalMeasurement(cm, line) {
 // Get a {top, bottom, left, right} box (in line-local coordinates)
 // for a given character.
 export function measureChar(cm, line, ch, bias) {
+  //console.info('measureChar'); console.log(line, ch, bias);
   return measureCharPrepared(cm, prepareMeasureForLine(cm, line), ch, bias)
 }
 
 // Find a line view that corresponds to the given line number.
 export function findViewForLine(cm, lineN) {
+  //console.info('findViewForLine'); console.log(lineN)
   if (lineN >= cm.display.viewFrom && lineN < cm.display.viewTo)
     return cm.display.view[findViewIndex(cm, lineN)]
   let ext = cm.display.externalMeasured
@@ -104,6 +117,7 @@ export function findViewForLine(cm, lineN) {
 // measurements in a row, can thus ensure that the set-up work is
 // only done once.
 export function prepareMeasureForLine(cm, line) {
+  //console.info('prepareMeasureForLine', line)
   let lineN = lineNo(line)
   let view = findViewForLine(cm, lineN)
   if (view && !view.text) {
@@ -116,33 +130,52 @@ export function prepareMeasureForLine(cm, line) {
     view = updateExternalMeasurement(cm, line)
 
   let info = mapFromLineView(view, line, lineN)
-  return {
+  let rect = {
     line: line, view: view, rect: null,
     map: info.map, cache: info.cache, before: info.before,
     hasHeights: false
   }
+  return rect
 }
 
 // Given a prepared measurement object, measures the position of an
 // actual character (or fetches it from the cache).
 export function measureCharPrepared(cm, prepared, ch, bias, varHeight) {
+  //console.info('measureCharPrepared'); console.log(prepared, ch, bias)
   if (prepared.before) ch = -1
   let key = ch + (bias || ""), found
+  //console.log('%ckey', 'color:  green', key)
   if (prepared.cache.hasOwnProperty(key)) {
+    //if (window.debugTwo) debugger;
     found = prepared.cache[key]
+    //console.info('found', found)
   } else {
-    if (!prepared.rect)
+    //if (window.debugOne) debugger;
+    if (!prepared.rect) {
       prepared.rect = prepared.view.text.getBoundingClientRect()
+      let innerEl = prepared.view.text.querySelector(':not([role=presentation])')
+      if (innerEl) {
+        //if (window.debugThree) debugger;
+        let extendedRect = innerEl.getClientRects().length > 1 ? innerEl.getClientRects()[0] : innerEl.getBoundingClientRect()
+        prepared.rect.charTop = extendedRect.top - prepared.rect.top
+        prepared.rect.lineHeight = extendedRect.height
+      }
+    }
     if (!prepared.hasHeights) {
       ensureLineHeights(cm, prepared.view, prepared.rect)
       prepared.hasHeights = true
     }
+    //console.log('%cheights', 'color: red', prepared.view.measure.heights)
     found = measureCharInner(cm, prepared, ch, bias)
     if (!found.bogus) prepared.cache[key] = found
   }
-  return {left: found.left, right: found.right,
-          top: varHeight ? found.rtop : found.top,
-          bottom: varHeight ? found.rbottom : found.bottom}
+  let measure = {
+    left: found.left, right: found.right,
+    top: varHeight ? found.rtop : found.top,
+    bottom: varHeight ? found.rbottom : found.bottom,
+    charTop: found.charTop, lineHeight: found.lineHeight
+  }
+  return measure
 }
 
 let nullRect = {left: 0, right: 0, top: 0, bottom: 0}
@@ -196,9 +229,11 @@ function getUsefulRect(rects, bias) {
 }
 
 function measureCharInner(cm, prepared, ch, bias) {
+  //console.info('measureCharInner'); console.log(prepared, ch, bias)
   let place = nodeAndOffsetInLineMap(prepared.map, ch, bias)
   let node = place.node, start = place.start, end = place.end, collapse = place.collapse
 
+  //if (window.debugFive) debugger;
   let rect
   if (node.nodeType == 3) { // If it is a text node, use a range to retrieve the coordinates.
     for (let i = 0; i < 4; i++) { // Retry a maximum of 4 times when nonsense rectangles are returned
@@ -230,16 +265,21 @@ function measureCharInner(cm, prepared, ch, bias) {
       rect = nullRect
   }
 
-  let rtop = rect.top - prepared.rect.top, rbot = rect.bottom - prepared.rect.top
+  //if (window.debugFive) debugger;
+  let ptop = cm.options.cursorHeightIsLineHeight ? prepared.rect.top + prepared.rect.charTop : prepared.rect.top
+  let rtop = rect.top - ptop, rbot = rect.bottom - ptop
   let mid = (rtop + rbot) / 2
   let heights = prepared.view.measure.heights
   let i = 0
   for (; i < heights.length - 1; i++)
     if (mid < heights[i]) break
   let top = i ? heights[i - 1] : 0, bot = heights[i]
-  let result = {left: (collapse == "right" ? rect.right : rect.left) - prepared.rect.left,
-                right: (collapse == "left" ? rect.left : rect.right) - prepared.rect.left,
-                top: top, bottom: bot}
+  let result = {
+    left: (collapse == "right" ? rect.right : rect.left) - prepared.rect.left,
+    right: (collapse == "left" ? rect.left : rect.right) - prepared.rect.left,
+    top: top, bottom: bot,
+    charTop: prepared.rect.charTop, lineHeight: prepared.rect.lineHeight
+  }
   if (!rect.left && !rect.right) result.bogus = true
   if (!cm.options.singleCursorHeightPerLine) { result.rtop = rtop; result.rbottom = rbot }
 
@@ -349,12 +389,14 @@ export function charCoords(cm, pos, context, lineObj, bias) {
 // Every position after the last character on a line is considered to stick
 // to the last character on the line.
 export function cursorCoords(cm, pos, context, lineObj, preparedMeasure, varHeight) {
+  //console.info('cursorCoords'); console.log(pos, lineObj, preparedMeasure, varHeight)
   lineObj = lineObj || getLine(cm.doc, pos.line)
   if (!preparedMeasure) preparedMeasure = prepareMeasureForLine(cm, lineObj)
   function get(ch, right) {
-    let m = measureCharPrepared(cm, preparedMeasure, ch, right ? "right" : "left", varHeight)
-    if (right) m.left = m.right; else m.right = m.left
-    return intoCoordSystem(cm, lineObj, m, context)
+    let rect = measureCharPrepared(cm, preparedMeasure, ch, right ? "right" : "left", varHeight)
+    if (right) rect.left = rect.right; else rect.right = rect.left
+    let coords = intoCoordSystem(cm, lineObj, rect, context)
+    return coords
   }
   let order = getOrder(lineObj), ch = pos.ch, sticky = pos.sticky
   if (ch >= lineObj.text.length) {
@@ -364,7 +406,11 @@ export function cursorCoords(cm, pos, context, lineObj, preparedMeasure, varHeig
     ch = 0
     sticky = "after"
   }
-  if (!order) return get(sticky == "before" ? ch - 1 : ch, sticky == "before")
+  if (!order) {
+    //if (window.debugSeven) debugger;
+    let coords = get(sticky == "before" ? ch - 1 : ch, sticky == "before")
+    return coords
+  }
 
   function getBidi(ch, partPos, invert) {
     let part = order[partPos], right = (part.level % 2) != 0
@@ -404,6 +450,7 @@ function PosWithInfo(line, ch, sticky, outside, xRel) {
 // Compute the character position closest to the given coordinates.
 // Input must be lineSpace-local ("div" coordinate system).
 export function coordsChar(cm, x, y) {
+  //console.info('coordsChar'); console.log(x, y)
   let doc = cm.doc
   y += cm.display.viewOffset
   if (y < 0) return PosWithInfo(doc.first, 0, null, true, -1)
@@ -438,9 +485,11 @@ export function wrappedLineExtentChar(cm, lineObj, preparedMeasure, target) {
 }
 
 function coordsCharInner(cm, lineObj, lineNo, x, y) {
+  //console.info('coordsCharInner'); console.log(lineObj, lineNo, x, y)
   y -= heightAtLine(lineObj)
   let begin = 0, end = lineObj.text.length
   let preparedMeasure = prepareMeasureForLine(cm, lineObj)
+  //console.log('%cpreparedMeasure','color: fuchsia', preparedMeasure);
   let pos
   let order = getOrder(lineObj)
   if (order) {
@@ -466,18 +515,30 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
       pos = prevPos
     }
   } else {
+    //if (window.debugSix) debugger;
+    //console.group('findFirst '+begin+':'+end)
     let ch = findFirst(ch => {
-      let box = intoCoordSystem(cm, lineObj, measureCharPrepared(cm, preparedMeasure, ch), "line")
-      if (box.top > y) {
-        // For the cursor stickiness
-        end = Math.min(ch, end)
-        return true
-      }
-      else if (box.bottom <= y) return false
-      else if (box.left > x) return true
-      else if (box.right < x) return false
-      else return (x - box.left < box.right - x)
+      //console.group('trying char '+ch);
+      let ret = (()=>{
+        let measure = measureCharPrepared(cm, preparedMeasure, ch)
+        let box = intoCoordSystem(cm, lineObj, measure, "line")
+        //console.log('%cbox', 'color: orange', box, measure);
+        let top = cm.options.cursorHeightIsLineHeight ? box.top + box.charTop : box.top;
+        let bottom = cm.options.cursorHeightIsLineHeight ? box.bottom + box.charTop : box.bottom;
+        if (top > y) {
+          // For the cursor stickiness
+          end = Math.min(ch, end)
+          return true
+        }
+        else if (bottom <= y) return false
+        else if (box.left > x) return true
+        else if (box.right < x) return false
+        else return (x - box.left < box.right - x)
+      })();
+      //console.groupEnd('trying char '+ch)
+      return ret;
     }, begin, end)
+    //console.groupEnd('findFirst '+begin+':'+end)
     ch = skipExtendingChars(lineObj.text, ch, 1)
     pos = new Pos(lineNo, ch, ch == end ? "before" : "after")
   }

@@ -317,6 +317,7 @@ function lineIsHiddenInner(doc, line, span) {
 
 // Find the height above the given line.
 export function heightAtLine(lineObj) {
+  //if (window.debug) debugger;
   lineObj = visualLine(lineObj)
 
   let h = 0, chunk = lineObj.parent
