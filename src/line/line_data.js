@@ -125,20 +125,26 @@ export function buildLineContent(cm, lineView) {
         makedSpan.to != 0
         && makedSpan.marker && makedSpan.marker.className || '').split(' '))
     }, []);
-    if ( markedSpansClasses.filter(( cls ) => cls == 'firepad-fs-30px').length ) {
-      builder.pre.className += ' fp-cm-pre-title ';
-    }
-    if ( markedSpansClasses.filter(( cls ) => cls == 'firepad-fs-25px').length ) {
-      builder.pre.className += ' fp-cm-pre-rubrik1 ';
-    }
-    if ( markedSpansClasses.filter(( cls ) => cls == 'firepad-fs-20px').length ) {
-      builder.pre.className += ' fp-cm-pre-rubrik2 ';
-    }
-    if ( markedSpansClasses.filter(( cls ) => cls == 'firepad-fs-16px').length ) {
-      builder.pre.className += ' fp-cm-pre-rubrik3 ';
-    }
-    if ( markedSpansClasses.filter(( cls ) => cls == 'firepad-fs-16-01px').length ) {
-      builder.pre.className += ' fp-cm-pre-rubrik4 ';
+    let fsClasses = markedSpansClasses.filter(( cls ) => cls.match(/firepad-fs-/))
+    if ( fsClasses.length ) {
+      //if (fsClasses.length > 1) debugger;
+      //attach font-size classes, so outer `responsive` span will have same size as inner span and cursor size will be calculated correctly
+      content.setAttribute("class", fsClasses.join(' '));
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-30px').length ) {
+        builder.pre.className += ' fp-cm-pre-title ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-25px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik1 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-20px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik2 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-16px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik3 ';
+      }
+      if ( fsClasses.filter(( cls ) => cls == 'firepad-fs-16-01px').length ) {
+        builder.pre.className += ' fp-cm-pre-rubrik4 ';
+      }
     }
   }
 
