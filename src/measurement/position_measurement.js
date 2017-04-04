@@ -45,7 +45,7 @@ function ensureLineHeights(cm, lineView, rect) {
   //if (window.debug) debugger;
   if (!lineView.measure.heights || wrapping && lineView.measure.width != curWidth) {
     let heights = lineView.measure.heights = []
-    let top = cm.options.cursorHeightIsLineHeight ? (rect.charTop + rect.top) : rect.top
+    let top = rect.charTop + rect.top
     let lastRect
     if (wrapping) {
       //if (window.debugThree) debugger;
@@ -59,7 +59,7 @@ function ensureLineHeights(cm, lineView, rect) {
       }
       if (rects.length) lastRect = rects[i]
     }
-    if (cm.options.cursorHeightIsLineHeight && wrapping && lastRect) {
+    if (wrapping && lastRect) {
       heights.push(lastRect.bottom - top)
     } else {
       heights.push(rect.bottom - top)
@@ -266,7 +266,7 @@ function measureCharInner(cm, prepared, ch, bias) {
   }
 
   //if (window.debugFive) debugger;
-  let ptop = cm.options.cursorHeightIsLineHeight ? prepared.rect.top + prepared.rect.charTop : prepared.rect.top
+  let ptop = prepared.rect.top + prepared.rect.charTop
   let rtop = rect.top - ptop, rbot = rect.bottom - ptop
   let mid = (rtop + rbot) / 2
   let heights = prepared.view.measure.heights
@@ -523,8 +523,8 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
         let measure = measureCharPrepared(cm, preparedMeasure, ch)
         let box = intoCoordSystem(cm, lineObj, measure, "line")
         //console.log('%cbox', 'color: orange', box, measure);
-        let top = cm.options.cursorHeightIsLineHeight ? box.top + box.charTop : box.top;
-        let bottom = cm.options.cursorHeightIsLineHeight ? box.bottom + box.charTop : box.bottom;
+        let top = box.top + box.charTop
+        let bottom = box.bottom + box.charTop
         if (top > y) {
           // For the cursor stickiness
           end = Math.min(ch, end)
