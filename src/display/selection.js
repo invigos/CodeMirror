@@ -34,9 +34,9 @@ export function drawSelectionCursor(cm, head, output) {
 
   let cursor = output.appendChild(elt("div", "\u00a0", "CodeMirror-cursor"))
   //if (window.debugFour) debugger;
-    cursor.style.left = pos.left + "px"
-    cursor.style.top = (pos.top + pos.charTop) + "px"
-    cursor.style.height = pos.lineHeight * cm.options.cursorHeight + "px"
+  cursor.style.left = pos.left + "px"
+  cursor.style.top = (pos.top + (pos.charTop || 0)) + "px"
+  cursor.style.height = (pos.lineHeight || 0) * cm.options.cursorHeight + "px"
 
   if (pos.other) {
     // Secondary cursor, shown when on a 'jump' in bi-directional text
@@ -88,7 +88,7 @@ function drawSelectionRange(cm, range, output) {
         right = rightPos.right
       }
       if (fromArg == null && from == 0) left = leftSide
-      let charTop = leftPos.charTop
+      let charTop = (leftPos.charTop || 0)
       if (rightPos.top - leftPos.top > 3) { // Different lines, draw top part
         add(left, leftPos.top + charTop, null, leftPos.bottom + charTop)
         left = leftSide
@@ -123,7 +123,7 @@ function drawSelectionRange(cm, range, output) {
     }
     if (leftEnd.bottom < rightStart.top) {
       //if (window.debugNine) debugger;
-      let leftTop = leftEnd.charTop, rightTop = rightStart.charTop
+      let leftTop = (leftEnd.charTop || 0), rightTop = (rightStart.charTop || 0)
       let leftPos  = charCoords(cm, Pos(sFrom.line, sFrom.ch), "div", getLine(doc, sFrom.line), "left")
       //console.info(leftEnd.charTop, rightStart.charTop)
       // additional line at bottom

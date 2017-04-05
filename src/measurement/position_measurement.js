@@ -45,7 +45,7 @@ function ensureLineHeights(cm, lineView, rect) {
   //if (window.debug) debugger;
   if (!lineView.measure.heights || wrapping && lineView.measure.width != curWidth) {
     let heights = lineView.measure.heights = []
-    let top = rect.charTop + rect.top
+    let top = (rect.charTop || 0) + rect.top
     let lastRect
     if (wrapping) {
       //if (window.debugThree) debugger;
@@ -153,11 +153,20 @@ export function measureCharPrepared(cm, prepared, ch, bias, varHeight) {
     //if (window.debugOne) debugger;
     if (!prepared.rect) {
       prepared.rect = prepared.view.text.getBoundingClientRect()
-      let innerEl = prepared.view.text.querySelector(':not([role=presentation])')
+
+      //presentation container has correct top offset
+      //container inside it has correct height if it present,
+      //if not, presentation container itself would have correct height
+      let presEl = prepared.view.text.querySelector('[role=presentation]')
+      let innerEl = Array.prototype.reduce.call(presEl.children, function( prevEl, curEl ) {
+        if ( !prevEl && curEl.nodeName.toUpperCase() == 'SPAN' ) return curEl; else return prevEl;
+      }, null) || presEl;
+
       if (innerEl) {
         //if (window.debugThree) debugger;
         let extendedRect = innerEl.getClientRects().length > 1 ? innerEl.getClientRects()[0] : innerEl.getBoundingClientRect()
-        prepared.rect.charTop = extendedRect.top - prepared.rect.top
+        let presRect = presEl.getBoundingClientRect()
+        prepared.rect.charTop = presRect.top - prepared.rect.top
         prepared.rect.lineHeight = extendedRect.height
       }
     }
@@ -173,7 +182,7 @@ export function measureCharPrepared(cm, prepared, ch, bias, varHeight) {
     left: found.left, right: found.right,
     top: varHeight ? found.rtop : found.top,
     bottom: varHeight ? found.rbottom : found.bottom,
-    charTop: found.charTop, lineHeight: found.lineHeight
+    charTop: (found.charTop || 0), lineHeight: (found.lineHeight || 0)
   }
   return measure
 }
@@ -266,7 +275,7 @@ function measureCharInner(cm, prepared, ch, bias) {
   }
 
   //if (window.debugFive) debugger;
-  let ptop = prepared.rect.top + prepared.rect.charTop
+  let ptop = prepared.rect.top + (prepared.rect.charTop || 0)
   let rtop = rect.top - ptop, rbot = rect.bottom - ptop
   let mid = (rtop + rbot) / 2
   let heights = prepared.view.measure.heights
@@ -278,7 +287,7 @@ function measureCharInner(cm, prepared, ch, bias) {
     left: (collapse == "right" ? rect.right : rect.left) - prepared.rect.left,
     right: (collapse == "left" ? rect.left : rect.right) - prepared.rect.left,
     top: top, bottom: bot,
-    charTop: prepared.rect.charTop, lineHeight: prepared.rect.lineHeight
+    charTop: (prepared.rect.charTop || 0), lineHeight: (prepared.rect.lineHeight || 0)
   }
   if (!rect.left && !rect.right) result.bogus = true
   if (!cm.options.singleCursorHeightPerLine) { result.rtop = rtop; result.rbottom = rbot }
@@ -523,8 +532,8 @@ function coordsCharInner(cm, lineObj, lineNo, x, y) {
         let measure = measureCharPrepared(cm, preparedMeasure, ch)
         let box = intoCoordSystem(cm, lineObj, measure, "line")
         //console.log('%cbox', 'color: orange', box, measure);
-        let top = box.top + box.charTop
-        let bottom = box.bottom + box.charTop
+        let top = box.top + (box.charTop || 0)
+        let bottom = box.bottom + (box.charTop || 0)
         if (top > y) {
           // For the cursor stickiness
           end = Math.min(ch, end)
