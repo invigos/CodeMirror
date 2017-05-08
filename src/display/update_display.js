@@ -58,6 +58,7 @@ export function maybeClipScrollbars(cm) {
 // (returning false) when there is nothing to be done and forced is
 // false.
 export function updateDisplayIfNeeded(cm, update) {
+  //console.log('%cupdateDisplayIfNeeded','color: blue')
   let display = cm.display, doc = cm.doc
 
   if (update.editorIsHidden) {
@@ -177,6 +178,7 @@ export function updateDisplaySimple(cm, viewport) {
 // that are not there yet, and updating the ones that are out of
 // date.
 function patchDisplay(cm, updateNumbersFrom, dims) {
+  //console.log('%cpatchDisplay','color: wheat')
   let display = cm.display, lineNumbers = cm.options.lineNumbers
   let container = display.lineDiv, cur = container.firstChild
 
