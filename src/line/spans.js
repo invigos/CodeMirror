@@ -79,6 +79,8 @@ export function stretchSpansOverChange(doc, change) {
   let first = markedSpansBefore(oldFirst, startCh, isInsert)
   let last = markedSpansAfter(oldLast, endCh, isInsert)
 
+    //if (window.d) debugger;
+
   // Next, merge those two ends
   let sameLine = change.text.length == 1, offset = lst(change.text).length + (sameLine ? startCh : 0)
   if (first) {

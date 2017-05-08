@@ -140,6 +140,7 @@ export let commands = {
     cm.setSelections(newSel)
   }),
   newlineAndIndent: cm => runInOp(cm, () => {
+    //console.log('%cnewlineAndIndent','color: green')
     let sels = cm.listSelections()
     for (let i = sels.length - 1; i >= 0; i--)
       cm.replaceRange(cm.doc.lineSeparator(), sels[i].anchor, sels[i].head, "+input")
