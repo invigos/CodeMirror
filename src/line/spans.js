@@ -3,6 +3,7 @@ import { indexOf, lst } from "../util/misc"
 import { cmp } from "./pos"
 import { sawCollapsedSpans } from "./saw_special_spans"
 import { getLine, isLine, lineNo } from "./utils_line"
+import { signalLater } from "../util/operation_group"
 
 // TEXTMARKER SPANS
 
@@ -74,12 +75,46 @@ export function stretchSpansOverChange(doc, change) {
   let oldLast = isLine(doc, change.to.line) && getLine(doc, change.to.line).markedSpans
   if (!oldFirst && !oldLast) return null
 
+  let allSpans = []
+  // find all .from.line markers in from lines, that have change start position inside them
+  for (let i = 0; i < oldFirst.length; ++i) {
+    // seems like null in .to|.start means that marker goes to the end|start of line
+    // todo: not sure if it's possible to have both nulls?
+    let fitWithin = (oldFirst[i].from == null || oldFirst[i].from < change.from.ch) && (change.from.ch < oldFirst[i].to || oldFirst[i].to == null)
+    let fitWithinWithInclusive =
+        oldFirst[i].marker.inclusiveLeft && (oldFirst[i].from == null || oldFirst[i].from <= change.from.ch)
+        && oldFirst[i].marker.inclusiveRight && (change.from.ch <= oldFirst[i].to || oldFirst[i].to == null)
+    if (fitWithin || fitWithinWithInclusive) {
+      allSpans.push(oldFirst[i])
+    }
+  }
+  // find all .to.line markers in to line that have change end position inside them
+  for (let i = 0; i < oldLast.length; ++i) {
+      // seems like null in .to|.start means that marker goes to the end|start of line
+      // todo: not sure if it's possible to have both nulls?
+      let fitWithin = (oldLast[i].from == null || oldLast[i].from < change.from.ch) && (change.from.ch < oldLast[i].to || oldLast[i].to == null)
+      let fitWithinWithInclusive =
+              oldLast[i].marker.inclusiveLeft && (oldLast[i].from == null || oldLast[i].from <= change.from.ch)
+              && oldLast[i].marker.inclusiveRight && (change.from.ch <= oldLast[i].to || oldLast[i].to == null)
+      if (fitWithin || fitWithinWithInclusive) {
+          allSpans.push(oldLast[i])
+      }
+  }
+
+  // find unique markers only
+  let uniqueSpans = []
+  for (let i = 0; i < allSpans.length; ++i) {
+    let span = allSpans[i];
+    let found = getMarkedSpanFor(uniqueSpans, span.marker)
+    if (!found) uniqueSpans.push(span)
+  }
+  // trigger an event for changed markers
+  signalLater(cm, "changeHappenedInMarkers", uniqueSpans)
+
   let startCh = change.from.ch, endCh = change.to.ch, isInsert = cmp(change.from, change.to) == 0
   // Get the spans that 'stick out' on both sides
   let first = markedSpansBefore(oldFirst, startCh, isInsert)
   let last = markedSpansAfter(oldLast, endCh, isInsert)
-
-    //if (window.d) debugger;
 
   // Next, merge those two ends
   let sameLine = change.text.length == 1, offset = lst(change.text).length + (sameLine ? startCh : 0)
