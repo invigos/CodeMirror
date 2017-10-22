@@ -75,7 +75,7 @@ export function stretchSpansOverChange(doc, change) {
   let oldLast = isLine(doc, change.to.line) && getLine(doc, change.to.line).markedSpans
   if (!oldFirst && !oldLast) return null
 
-  signalMarkersChanges(change, oldFirst, oldLast)
+  signalMarkersChanges(doc, change)
 
   let startCh = change.from.ch, endCh = change.to.ch, isInsert = cmp(change.from, change.to) == 0
   // Get the spans that 'stick out' on both sides
@@ -131,31 +131,36 @@ export function stretchSpansOverChange(doc, change) {
   return newMarkers
 }
 
-function signalMarkersChanges(change, oldFirst, oldLast) {
+// fire event with list of affected markers
+// markers that are between start and end position of change would all be affected
+// and all markers that contain change inside them are affected too
+function signalMarkersChanges(doc, change) {
     let allSpans = []
-    // find all .from.line markers in from lines, that have change start position inside them
-    for (let i = 0; i < oldFirst.length; ++i) {
-        // seems like null in .to|.start means that marker goes to the end|start of line
-        // todo: not sure if it's possible to have both nulls?
-        let fitWithin = (oldFirst[i].from == null || oldFirst[i].from < change.from.ch) && (change.from.ch < oldFirst[i].to || oldFirst[i].to == null)
-        let fitWithinWithInclusive =
-                oldFirst[i].marker.inclusiveLeft && (oldFirst[i].from == null || oldFirst[i].from <= change.from.ch)
-                && oldFirst[i].marker.inclusiveRight && (change.from.ch <= oldFirst[i].to || oldFirst[i].to == null)
-        if (fitWithin || fitWithinWithInclusive) {
-            allSpans.push(oldFirst[i])
+    // get list of all markers between start and end position of change
+    for (let i = change.from.line; i <= change.to.line; i++) {
+      let spans = getLine(doc, i).markedSpans;
+      // for start or end line of change add every span that has it's start or end inside change
+      if (i == change.from.line || i == change.to.line) {
+        for (let j = 0; j < spans.length; ++j) {
+          let span = spans[j];
+          let changeStart = change.from.line == i ? change.from.ch : null;
+          let changeEnd   = change.to.line   == i ? change.to.ch   : null;
+          let markerStartInsideChange =
+              (changeStart == null || changeStart < span.from || changeStart <= span.from && span.marker.inclusiveLeft)
+            && (changeEnd  == null || changeEnd   > span.from || changeEnd   >= span.from && span.marker.inclusiveLeft)
+          let markerEndInsideChange =
+              (changeStart == null || changeStart < span.to || changeStart <= span.to && span.marker.inclusiveRight)
+            && (changeEnd  == null || changeEnd   > span.to || changeEnd   >= span.to && span.marker.inclusiveRight)
+          let changeInsideMarker =
+              (span.from == null || span.from < changeStart)
+            && (changeEnd < span.to || span.to == null)
+          if (markerStartInsideChange || markerEndInsideChange || changeInsideMarker) allSpans.push(span)
         }
-    }
-    // find all .to.line markers in to line that have change end position inside them
-    for (let i = 0; i < oldLast.length; ++i) {
-        // seems like null in .to|.start means that marker goes to the end|start of line
-        // todo: not sure if it's possible to have both nulls?
-        let fitWithin = (oldLast[i].from == null || oldLast[i].from < change.from.ch) && (change.from.ch < oldLast[i].to || oldLast[i].to == null)
-        let fitWithinWithInclusive =
-                oldLast[i].marker.inclusiveLeft && (oldLast[i].from == null || oldLast[i].from <= change.from.ch)
-                && oldLast[i].marker.inclusiveRight && (change.from.ch <= oldLast[i].to || oldLast[i].to == null)
-        if (fitWithin || fitWithinWithInclusive) {
-            allSpans.push(oldLast[i])
-        }
+      }
+      // for multiline change, push all intermediate lines spans as changed
+      if (i != change.from.line && i != change.to.line) {
+        allSpans = allSpans.concat(spans);
+      }
     }
 
     // find unique markers only
