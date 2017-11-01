@@ -140,7 +140,7 @@ function signalMarkersChanges(doc, change) {
     for (let i = change.from.line; i <= change.to.line; i++) {
       let spans = getLine(doc, i).markedSpans;
       // for start or end line of change add every span that has it's start or end inside change
-      if (i == change.from.line || i == change.to.line) {
+      if (spans && (i == change.from.line || i == change.to.line)) {
         for (let j = 0; j < spans.length; ++j) {
           let span = spans[j];
           let changeStart = change.from.line == i ? change.from.ch : null;
@@ -159,7 +159,7 @@ function signalMarkersChanges(doc, change) {
       }
       // for multiline change, push all intermediate lines spans as changed
       if (i != change.from.line && i != change.to.line) {
-        allSpans = allSpans.concat(spans);
+        if (spans) allSpans = allSpans.concat(spans);
       }
     }
 
